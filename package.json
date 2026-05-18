@@ -1,0 +1,26 @@
+{
+  "name": "kakao-openchat-bot-bridge",
+  "version": "0.1.0",
+  "description": "Unofficial KakaoTalk OpenChat bot bridge for self-hosted webhook automation.",
+  "type": "module",
+  "main": "src/index.mjs",
+  "bin": {
+    "kakao-openchat-bot-bridge": "src/index.mjs"
+  },
+  "scripts": {
+    "start": "node src/index.mjs serve",
+    "dev": "node --watch src/index.mjs serve",
+    "test": "node --test"
+  },
+  "keywords": [
+    "kakao",
+    "openchat",
+    "bot",
+    "webhook",
+    "messengerbot"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  }
+}

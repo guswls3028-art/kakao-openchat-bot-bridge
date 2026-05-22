@@ -1,4 +1,4 @@
-import { postQuestion } from "./question-api.mjs";
+import { postQuestion } from "../infrastructure/question-api.mjs";
 
 function compactWhitespace(value) {
   return String(value || "").replace(/\s+/gu, " ").trim();
@@ -19,12 +19,14 @@ function isHttpUrl(value) {
 }
 
 function isAdmin(config, sender) {
+  if (!config.kakao.allowSenderAdminCommands) return false;
   const admins = config.kakao.adminSenders;
   if (admins.length === 0) return false;
   return admins.includes(String(sender || "").trim());
 }
 
 function isRoomAllowed(config, room) {
+  if (config.kakao.allowAllRooms) return true;
   const allowList = config.kakao.roomAllowList;
   if (allowList.length === 0) return true;
   return allowList.includes(String(room || "").trim());
@@ -69,6 +71,12 @@ function extractQuestionText(config, text) {
       .trim();
   }
   return "";
+}
+
+function questionDedupeKey({ room, sender, text, raw }) {
+  const id = raw?.messageId || raw?.id || raw?.msgId || raw?.logId;
+  if (id) return `question:id:${String(id)}`;
+  return `question:fingerprint:${compactWhitespace(room)}|${compactWhitespace(sender)}|${compactWhitespace(text)}`;
 }
 
 export function createBot({ config, store }) {
@@ -130,6 +138,12 @@ export function createBot({ config, store }) {
       if (questionText.length < 6) {
         return result("reply", { reply: "질문이 너무 짧아요. 상황을 조금 더 적어주세요." });
       }
+      const dedupeKey = questionDedupeKey({ room, sender, text: questionText, raw: message.raw });
+      const dedupeTtlMs = config.questionApi.dedupeTtlMs || 24 * 60 * 60 * 1000;
+      const shouldDedupe = Boolean(config.questionApi.endpoint && store.claimDedupe);
+      if (shouldDedupe && !store.claimDedupe(dedupeKey, dedupeTtlMs)) {
+        return result("reply", { reply: "이미 접수 처리 중이거나 접수된 질문입니다." });
+      }
       try {
         const posted = await postQuestion(config, { room, sender, text: questionText });
         if (posted.configured) {
@@ -147,6 +161,7 @@ export function createBot({ config, store }) {
           ].join("\n"),
         });
       } catch (error) {
+        if (shouldDedupe && store.releaseDedupe) store.releaseDedupe(dedupeKey);
         return result("reply", {
           reply: `질문 등록 실패: ${error instanceof Error ? error.message : "unknown_error"}`,
         });

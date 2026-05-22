@@ -44,21 +44,46 @@ export function loadConfig(env = process.env) {
   loadDotEnv();
   const dataDir = path.resolve(process.cwd(), env.KAKAO_BOT_DATA_DIR || "./data");
   return {
+    nodeEnv: env.NODE_ENV || "development",
     server: {
       host: env.KAKAO_BOT_HOST || "0.0.0.0",
       port: numberFromEnv(env.KAKAO_BOT_PORT, 4040, { min: 1, max: 65535 }),
       secret: env.KAKAO_BOT_SECRET || "",
+      hmacSecret: env.KAKAO_WEBHOOK_HMAC_SECRET || "",
+      hmacMaxSkewMs: numberFromEnv(env.KAKAO_WEBHOOK_HMAC_MAX_SKEW_MS, 5 * 60 * 1000, {
+        min: 30_000,
+        max: 30 * 60 * 1000,
+      }),
+      allowInsecureWebhook: env.KAKAO_ALLOW_INSECURE_WEBHOOK === "true",
+      webhookTimeoutMs: numberFromEnv(env.KAKAO_WEBHOOK_TIMEOUT_MS, 12000, {
+        min: 1000,
+        max: 30000,
+      }),
+      batchMaxMessages: numberFromEnv(env.KAKAO_BATCH_MAX_MESSAGES, 25, {
+        min: 1,
+        max: 100,
+      }),
     },
     kakao: {
       roomAllowList: splitList(env.KAKAO_ROOM_ALLOWLIST),
+      allowAllRooms: env.KAKAO_ALLOW_ALL_ROOMS === "true",
       botNicknames: splitList(env.KAKAO_BOT_NICKNAMES),
       adminSenders: splitList(env.KAKAO_ADMIN_SENDERS),
+      allowSenderAdminCommands: env.KAKAO_ALLOW_SENDER_ADMIN_COMMANDS === "true",
       mention: env.KAKAO_BOT_MENTION || "@봇",
     },
     questionApi: {
       endpoint: env.QUESTION_API_ENDPOINT || "",
       secret: env.QUESTION_API_SECRET || "",
       publicBaseUrl: trimTrailingSlash(env.PUBLIC_BASE_URL || ""),
+      requestTimeoutMs: numberFromEnv(env.QUESTION_API_TIMEOUT_MS, 6000, {
+        min: 1000,
+        max: 14000,
+      }),
+      dedupeTtlMs: numberFromEnv(env.QUESTION_DEDUPE_TTL_MS, 24 * 60 * 60 * 1000, {
+        min: 60_000,
+        max: 7 * 24 * 60 * 60 * 1000,
+      }),
     },
     dataDir,
   };

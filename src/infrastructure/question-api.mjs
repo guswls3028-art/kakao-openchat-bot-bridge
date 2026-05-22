@@ -21,12 +21,27 @@ export async function postQuestion(config, message) {
   const headers = { "content-type": "application/json" };
   if (config.questionApi.secret) headers.authorization = `Bearer ${config.questionApi.secret}`;
 
-  const response = await fetch(config.questionApi.endpoint, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(payload),
-  });
-  const text = await response.text();
+  const timeoutMs = Number(config.questionApi.requestTimeoutMs || 6000);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  let response;
+  let text = "";
+  try {
+    response = await fetch(config.questionApi.endpoint, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+    text = await response.text();
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw new Error("question_api_failed:timeout");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
   let data = {};
   try {
     data = text ? JSON.parse(text) : {};

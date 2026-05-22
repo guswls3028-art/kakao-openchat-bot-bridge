@@ -25,6 +25,15 @@ flowchart LR
   D --> F["Optional question API"]
 ```
 
+코드 위치:
+
+- `src/index.mjs` — CLI entrypoint.
+- `src/presentation/` — HTTP webhook server.
+- `src/application/` — bot command handling.
+- `src/infrastructure/` — JSON store and optional question API adapter.
+- `src/security/` — webhook HMAC/secret validation.
+- `src/config/` — environment parsing and data-dir setup.
+
 ## 주의
 
 - 이 프로젝트는 Kakao Corp.와 무관한 비공식 예제입니다.
@@ -74,13 +83,22 @@ Invoke-RestMethod http://localhost:4040/health
 | `KAKAO_BOT_HOST` | 서버 listen host. 기본값 `0.0.0.0` |
 | `KAKAO_BOT_PORT` | 서버 port. 기본값 `4040` |
 | `KAKAO_BOT_SECRET` | bridge app과 공유하는 webhook 비밀값 |
+| `KAKAO_WEBHOOK_HMAC_SECRET` | 선택. raw body HMAC 검증용 secret |
+| `KAKAO_WEBHOOK_HMAC_MAX_SKEW_MS` | HMAC timestamp 허용 오차 |
+| `KAKAO_ALLOW_INSECURE_WEBHOOK` | secret 없는 격리 로컬 테스트에서만 `true` |
+| `KAKAO_WEBHOOK_TIMEOUT_MS` | webhook 응답 timeout |
+| `KAKAO_BATCH_MAX_MESSAGES` | batch webhook 최대 메시지 수 |
 | `KAKAO_ROOM_ALLOWLIST` | 반응할 방 이름 목록. 쉼표 구분. 비우면 모든 방 허용 |
+| `KAKAO_ALLOW_ALL_ROOMS` | production에서 모든 방 허용이 명시 의도일 때만 `true` |
 | `KAKAO_BOT_NICKNAMES` | 봇 자신의 닉네임 목록. 자기 응답 루프 방지 |
 | `KAKAO_ADMIN_SENDERS` | `/공지설정`, `/가이드추가` 가능한 관리자 닉네임 |
+| `KAKAO_ALLOW_SENDER_ADMIN_COMMANDS` | 닉네임 기반 관리자 명령 허용. 기본 비활성 권장 |
 | `KAKAO_BOT_MENTION` | 멘션 트리거. 기본값 `@봇` |
 | `KAKAO_BOT_DATA_DIR` | 상태/이벤트 로그 저장 폴더 |
 | `QUESTION_API_ENDPOINT` | 선택. `/질문`을 전달할 외부 API endpoint |
 | `QUESTION_API_SECRET` | 선택. 외부 API 호출용 secret |
+| `QUESTION_API_TIMEOUT_MS` | 질문 API 호출 timeout |
+| `QUESTION_DEDUPE_TTL_MS` | 중복 질문 방지 TTL |
 | `PUBLIC_BASE_URL` | 선택. 응답 URL 보정용 public base URL |
 
 ## 웹훅 테스트
@@ -102,6 +120,8 @@ Invoke-RestMethod `
   -ContentType "application/json" `
   -Body '{"room":"테스트방","sender":"방장","text":"/핑"}'
 ```
+
+웹훅 인증은 `KAKAO_BOT_SECRET` legacy secret, `KAKAO_WEBHOOK_HMAC_SECRET` HMAC-only, 또는 둘 다 통과해야 하는 defense-in-depth 모드로 운영할 수 있습니다. HMAC을 켜면 요청마다 `x-bot-timestamp`, `x-bot-nonce`, `x-bot-signature`가 필요하고, signature 원문은 실제 raw body 기준의 `${timestamp}.${nonce}.${rawBody}`입니다.
 
 ## 메신저봇R 예시
 

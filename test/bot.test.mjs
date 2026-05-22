@@ -3,8 +3,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { createBot } from "../src/bot.mjs";
-import { JsonStore } from "../src/store.mjs";
+import { createBot } from "../src/application/bot.mjs";
+import { JsonStore } from "../src/infrastructure/store.mjs";
 
 function fixture() {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "kakao-openchat-bot-"));
@@ -13,6 +13,7 @@ function fixture() {
       roomAllowList: ["테스트방"],
       botNicknames: ["봇"],
       adminSenders: ["방장"],
+      allowSenderAdminCommands: true,
       mention: "@봇",
     },
     questionApi: { endpoint: "", secret: "", publicBaseUrl: "" },

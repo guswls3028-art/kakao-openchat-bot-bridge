@@ -1,8 +1,9 @@
 #!/usr/bin/env node
-import { loadConfig, ensureDataDir } from "./config.mjs";
-import { JsonStore } from "./store.mjs";
-import { createServer } from "./server.mjs";
-import { createBot } from "./bot.mjs";
+import { pathToFileURL } from "node:url";
+import { createBot } from "./application/bot.mjs";
+import { ensureDataDir, loadConfig } from "./config/config.mjs";
+import { JsonStore } from "./infrastructure/store.mjs";
+import { createServer } from "./presentation/server.mjs";
 
 function parseFlags(argv) {
   const flags = {};
@@ -27,6 +28,34 @@ Usage:
 Environment:
   Copy .env.example to .env and edit values.
 `);
+}
+
+function isPublicBindHost(host) {
+  const value = String(host || "").trim().toLowerCase();
+  return value === "" || value === "0.0.0.0" || value === "::" || value === "[::]";
+}
+
+export function assertWebhookSecret(config) {
+  if (config.server.secret || config.server.hmacSecret) return;
+  if (config.server.allowInsecureWebhook && config.nodeEnv !== "production" && !isPublicBindHost(config.server.host)) return;
+  if (config.nodeEnv !== "production" && !isPublicBindHost(config.server.host)) return;
+  throw new Error(
+    "KAKAO_BOT_SECRET or KAKAO_WEBHOOK_HMAC_SECRET is required for production or public webhook binding. Set KAKAO_ALLOW_INSECURE_WEBHOOK=true only for isolated local testing.",
+  );
+}
+
+function assertRoomScope(config) {
+  if (config.kakao.allowAllRooms) return;
+  if (config.kakao.roomAllowList.length > 0) return;
+  if (config.nodeEnv !== "production") return;
+  throw new Error(
+    "KAKAO_ROOM_ALLOWLIST is required in production. Set KAKAO_ALLOW_ALL_ROOMS=true only when all rooms are intentionally allowed.",
+  );
+}
+
+function isEntrypoint() {
+  const entry = process.argv[1] ? pathToFileURL(process.argv[1]).href : "";
+  return import.meta.url === entry;
 }
 
 async function main() {
@@ -59,6 +88,8 @@ async function main() {
   }
 
   const server = createServer({ config, store });
+  assertWebhookSecret(config);
+  assertRoomScope(config);
   server.listen(config.server.port, config.server.host, () => {
     console.log(
       `kakao-openchat-bot-bridge listening on http://${config.server.host}:${config.server.port}`,
@@ -66,7 +97,9 @@ async function main() {
   });
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.stack || error.message : error);
-  process.exitCode = 1;
-});
+if (isEntrypoint()) {
+  main().catch((error) => {
+    console.error(error instanceof Error ? error.stack || error.message : error);
+    process.exitCode = 1;
+  });
+}

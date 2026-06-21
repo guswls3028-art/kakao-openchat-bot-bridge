@@ -119,8 +119,8 @@ function formatResult(result, format) {
   return result;
 }
 
-export function createServer({ config, store }) {
-  const bot = createBot({ config, store });
+export function createServer({ config, store, questionPoster }) {
+  const bot = createBot({ config, store, questionPoster });
 
   return http.createServer(async (request, response) => {
     const url = new URL(request.url || "/", `http://${request.headers.host || "localhost"}`);

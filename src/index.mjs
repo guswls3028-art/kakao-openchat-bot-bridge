@@ -2,6 +2,7 @@
 import { pathToFileURL } from "node:url";
 import { createBot } from "./application/bot.mjs";
 import { ensureDataDir, loadConfig } from "./config/config.mjs";
+import { postQuestion } from "./infrastructure/question-api.mjs";
 import { JsonStore } from "./infrastructure/store.mjs";
 import { createServer } from "./presentation/server.mjs";
 
@@ -71,7 +72,7 @@ async function main() {
 
   if (command === "test-message") {
     const flags = parseFlags(rest);
-    const bot = createBot({ config, store });
+    const bot = createBot({ config, store, questionPoster: postQuestion });
     const result = await bot.handle({
       room: flags.room || "테스트방",
       sender: flags.sender || "방장",
@@ -87,7 +88,7 @@ async function main() {
     return;
   }
 
-  const server = createServer({ config, store });
+  const server = createServer({ config, store, questionPoster: postQuestion });
   assertWebhookSecret(config);
   assertRoomScope(config);
   server.listen(config.server.port, config.server.host, () => {

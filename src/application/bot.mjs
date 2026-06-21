@@ -1,5 +1,3 @@
-import { postQuestion } from "../infrastructure/question-api.mjs";
-
 function compactWhitespace(value) {
   return String(value || "").replace(/\s+/gu, " ").trim();
 }
@@ -79,7 +77,11 @@ function questionDedupeKey({ room, sender, text, raw }) {
   return `question:fingerprint:${compactWhitespace(room)}|${compactWhitespace(sender)}|${compactWhitespace(text)}`;
 }
 
-export function createBot({ config, store }) {
+async function disabledQuestionPoster() {
+  return { configured: false };
+}
+
+export function createBot({ config, store, questionPoster = disabledQuestionPoster }) {
   async function handle(message) {
     const room = compactWhitespace(message.room);
     const sender = compactWhitespace(message.sender);
@@ -145,7 +147,7 @@ export function createBot({ config, store }) {
         return result("reply", { reply: "이미 접수 처리 중이거나 접수된 질문입니다." });
       }
       try {
-        const posted = await postQuestion(config, { room, sender, text: questionText });
+        const posted = await questionPoster(config, { room, sender, text: questionText });
         if (posted.configured) {
           store.increment("forwardedQuestions");
           return result("reply", {
